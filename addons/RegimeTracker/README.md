@@ -4,11 +4,11 @@ A Final Fantasy XI addon for Windower that tracks regime progress by monitoring 
 
 ## Features
 
-- **Automatic Tracking**: Monitors mob deaths and automatically tracks progress for designated regime targets
-- **Family-based Detection**: Uses the InfoBar database to identify mob families and match them to regime requirements
+- **Fully Automatic**: No manual setup required - automatically detects and tracks regimes from chat messages
+- **Smart Detection**: Uses the last killed mob and chat messages to determine regime family and progress
 - **Progress Persistence**: Saves regime progress between sessions
-- **Flexible Messaging**: Configurable chat output modes (echo, say, party, linkshell, etc.)
-- **Easy Commands**: Simple command interface for managing regimes
+- **Real-time Updates**: Shows current regime status and progress automatically
+- **Simple Commands**: Minimal command interface for status and control
 
 ## Requirements
 
@@ -28,36 +28,35 @@ A Final Fantasy XI addon for Windower that tracks regime progress by monitoring 
 
 - `//regime help` - Show help information
 - `//regime status` - Show current regime status
-- `//regime set <family> <total>` - Set a new regime
 - `//regime clear` - Clear current regime
 - `//regime toggle` - Enable/disable tracking
-- `//regime sync` - Sync progress from recent chat messages
 - `//regime reload` - Reload the addon
 - `//regime unload` - Unload the addon
 
-### Setting Up a Regime
+### How It Works
 
-To start tracking a regime, use the set command with the mob family and total count:
+The addon automatically detects regimes when you:
 
-```
-//regime set "Goblin" 4
-```
+1. **Kill a mob** - The addon tracks the last mob you killed
+2. **See progress message** - When the game shows "You defeated a designated target. (Progress: X/Y)"
+3. **Auto-detection** - The addon automatically determines the regime family and starts tracking
 
-This will start tracking Goblin kills with a target of 4 total.
+**No manual setup required!**
 
 ### Example Workflow
 
-1. **Set Regime**: `//regime set "Goblin" 4` (or auto-detect from grounds tome selection)
-2. **Kill Mobs**: The addon automatically tracks kills of the specified family
-3. **Monitor Progress**: Progress messages appear after each kill: "You defeated a designated target. (Progress: 2/4)"
-4. **Chat Sync**: Automatically updates progress from game chat messages
-5. **Completion**: When the target is reached: "Regime complete! You have defeated 4 Goblin targets."
+1. **Kill a mob** - Any mob in the game
+2. **See progress message** - Game shows "You defeated a designated target. (Progress: 2/4)"
+3. **Auto-tracking starts** - Addon automatically detects regime family and progress
+4. **Monitor status** - Use `//regime status` to see current progress
+5. **Completion** - When target is reached: "Regime complete! You have defeated 4 [Family] targets."
 
 ### Auto-Detection Features
 
-- **Grounds Tome Selection**: Automatically detects when you select a new regime
 - **Chat Message Parsing**: Monitors chat for progress updates and completion messages
+- **Mob Family Detection**: Uses the last killed mob to determine regime family
 - **Progress Synchronization**: Keeps regime progress in sync with game messages
+- **Grounds Tome Selection**: Automatically detects when you select a new regime
 
 ## Configuration
 
@@ -72,8 +71,8 @@ The addon automatically saves settings to a config file. Key settings include:
 
 1. **Mob Death Detection**: Monitors incoming game packets to detect when mobs are killed
 2. **Chat Message Monitoring**: Listens for regime progress messages in chat for automatic updates
-3. **Family Lookup**: Queries the InfoBar database to get the family of the killed mob
-4. **Progress Tracking**: If the mob family matches the current regime, progress is incremented
+3. **Family Lookup**: Queries the InfoBar database to get the family of the last killed mob
+4. **Progress Tracking**: Automatically updates progress based on chat messages
 5. **Status Updates**: Progress messages are displayed and saved
 6. **Auto-Detection**: Can automatically detect new regimes when selected from grounds tomes
 

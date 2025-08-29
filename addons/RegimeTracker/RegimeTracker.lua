@@ -90,20 +90,12 @@ windower.register_event('addon command', function(command, ...)
         show_help()
     elseif command == 'status' or command == 's' then
         show_status()
-    elseif command == 'set' then
-        if #args >= 2 then
-            set_regime(args[1], tonumber(args[2]))
-        else
-            log('Usage: //regime set <family> <total>')
-        end
     elseif command == 'clear' or command == 'c' then
         clear_regime()
     elseif command == 'toggle' or command == 't' then
         settings.enabled = not settings.enabled
         config.save(settings)
         log('RegimeTracker ' .. (settings.enabled and 'enabled' or 'disabled'))
-    elseif command == 'sync' then
-        sync_from_chat()
     elseif command == 'reload' then
         windower.send_command('lua reload RegimeTracker')
     elseif command == 'unload' then
@@ -115,7 +107,7 @@ end)
 
 -- Monitor mob deaths
 windower.register_event('incoming chunk', function(id, original, modified, injected, blocked)
-    if not settings.enabled or not current_regime then return end
+    if not settings.enabled then return end
     
     -- Check for mob death (packet 0x29)
     if id == 0x29 then
@@ -126,7 +118,7 @@ windower.register_event('incoming chunk', function(id, original, modified, injec
         local killed_mob = windower.ffxi.get_mob_by_id(mob_id)
         if killed_mob and killed_mob.index == mob_index then
             last_killed_mob = killed_mob
-            check_regime_progress(killed_mob)
+            log('Last mob killed: ' .. killed_mob.name)
         end
     end
 end)
@@ -144,24 +136,39 @@ windower.register_event('incoming text', function(original, modified, mode)
         total_targets = tonumber(total_targets)
         
         if current_progress and total_targets then
-            -- If no regime is set, try to auto-detect from the first progress message
+            -- Auto-detect regime if we don't have one set
             if not current_regime then
-                log('Auto-detecting regime from progress message: ' .. current_progress .. '/' .. total_targets)
-                -- We can't determine the family from just the progress message, so we'll wait for more info
-            else
-                -- Update regime progress based on chat message
-                regime_progress = current_progress
-                regime_total = total_targets
-                
-                log('Regime progress updated from chat: ' .. regime_progress .. '/' .. regime_total)
-                
-                -- Check if regime is complete
-                if regime_progress >= regime_total then
-                    regime_complete()
+                -- Try to determine family from last killed mob
+                if last_killed_mob then
+                    local mob_family = get_mob_family(last_killed_mob.name, windower.ffxi.get_info().zone)
+                    if mob_family then
+                        log('Auto-detecting regime: ' .. mob_family .. ' (' .. total_targets .. ' targets)')
+                        set_regime(mob_family, total_targets)
+                        regime_progress = current_progress
+                    else
+                        log('Auto-detecting regime progress: ' .. current_progress .. '/' .. total_targets .. ' (family unknown)')
+                        -- Set a temporary regime with unknown family
+                        set_regime("Unknown", total_targets)
+                        regime_progress = current_progress
+                    end
                 else
-                    -- Save progress
-                    save_regime_data()
+                    log('Auto-detecting regime progress: ' .. current_progress .. '/' .. total_targets .. ' (no mob info)')
+                    -- Set a temporary regime with unknown family
+                    set_regime("Unknown", total_targets)
+                    regime_progress = current_progress
                 end
+            else
+                -- Update existing regime progress
+                regime_progress = current_progress
+                log('Regime progress updated: ' .. regime_progress .. '/' .. regime_total)
+            end
+            
+            -- Check if regime is complete
+            if regime_progress >= regime_total then
+                regime_complete()
+            else
+                -- Save progress
+                save_regime_data()
             end
         end
     end
@@ -174,7 +181,7 @@ windower.register_event('incoming text', function(original, modified, mode)
         total_killed = tonumber(total_killed)
         
         if total_killed then
-            log('Regime completion detected from chat: ' .. total_killed .. ' ' .. family_name .. ' targets')
+            log('Regime completion detected: ' .. total_killed .. ' ' .. family_name .. ' targets')
             if current_regime then
                 regime_complete()
             else
@@ -191,38 +198,13 @@ windower.register_event('incoming text', function(original, modified, mode)
         target_count = tonumber(target_count)
         
         if target_count then
-            log('New regime detected from chat: ' .. family_name .. ' (' .. target_count .. ' targets)')
+            log('New regime selected: ' .. family_name .. ' (' .. target_count .. ' targets)')
             set_regime(family_name, target_count)
         end
     end
 end)
 
--- Check if the killed mob matches the current regime
-function check_regime_progress(mob)
-    if not current_regime or not mob then return end
-    
-    -- Get mob family from database
-    local mob_family = get_mob_family(mob.name, windower.ffxi.get_info().zone)
-    
-    if mob_family and mob_family:lower() == current_regime.family:lower() then
-        regime_progress = regime_progress + 1
-        log('Regime progress: ' .. regime_progress .. '/' .. regime_total)
-        
-        -- Show progress message
-        if settings.show_progress then
-            local message = string.format("You defeated a designated target. (Progress: %d/%d)", regime_progress, regime_total)
-            send_message(message)
-        end
-        
-        -- Check if regime is complete
-        if regime_progress >= regime_total then
-            regime_complete()
-        end
-        
-        -- Save progress
-        save_regime_data()
-    end
-end
+
 
 -- Get mob family from database
 function get_mob_family(mob_name, zone_name)
@@ -318,39 +300,37 @@ function show_help()
     log('=== RegimeTracker Commands ===')
     log('//regime help - Show this help')
     log('//regime status - Show current regime status')
-    log('//regime set <family> <total> - Set a new regime')
     log('//regime clear - Clear current regime')
     log('//regime toggle - Enable/disable tracking')
-    log('//regime sync - Sync progress from recent chat messages')
     log('//regime reload - Reload the addon')
     log('//regime unload - Unload the addon')
+    log('')
+    log('Note: Regimes are automatically detected from chat messages')
+    log('No manual setup required!')
 end
 
 -- Show current status
 function show_status()
     if current_regime then
-        log('Current regime: ' .. current_regime.family)
+        log('=== Current Regime Status ===')
+        log('Family: ' .. current_regime.family)
         log('Progress: ' .. regime_progress .. '/' .. regime_total)
+        if regime_progress > 0 then
+            local percentage = math.floor((regime_progress / regime_total) * 100)
+            log('Completion: ' .. percentage .. '%')
+        end
         if last_killed_mob then
             log('Last killed: ' .. last_killed_mob.name)
         end
+        log('Status: ' .. (regime_progress >= regime_total and 'COMPLETE!' or 'In Progress'))
     else
-        log('No active regime')
+        log('No active regime detected')
+        log('Kill a mob and wait for regime progress message to auto-detect')
     end
     log('Tracking: ' .. (settings.enabled and 'enabled' or 'disabled'))
 end
 
--- Sync regime progress from recent chat messages
-function sync_from_chat()
-    if not current_regime then
-        log('No active regime to sync')
-        return
-    end
-    
-    log('Attempting to sync regime progress from chat...')
-    log('Note: This feature works best when you have recent regime progress messages in chat')
-    log('Current progress: ' .. regime_progress .. '/' .. regime_total)
-end
+
 
 -- Log function
 function log(message)
