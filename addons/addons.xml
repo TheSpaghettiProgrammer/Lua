@@ -879,4 +879,11 @@
     <bugtracker>https://github.com/Windower/Lua/issues</bugtracker>
     <support>https://discord.gg/aUrHCvk</support>
   </addon>
+  <addon>
+    <name>RegimeTracker</name>
+    <author>Your Name</author>
+    <description>Tracks regime progress by monitoring mob deaths and checking mob families against regime requirements.</description>
+    <bugtracker>https://github.com/Windower/Lua/issues</bugtracker>
+    <support>https://discord.gg/aUrHCvk</support>
+  </addon>
 </addons>
