@@ -96,6 +96,11 @@ windower.register_event('addon command', function(command, ...)
         settings.enabled = not settings.enabled
         config.save(settings)
         log('RegimeTracker ' .. (settings.enabled and 'enabled' or 'disabled'))
+    elseif command == 'debug' then
+        log('Debug info:')
+        log('Current target: ' .. (last_killed_mob and last_killed_mob.name or 'None'))
+        log('Database connected: ' .. (db and db:isopen() and 'Yes' or 'No'))
+        log('Zone: ' .. windower.ffxi.get_info().zone)
     elseif command == 'reload' then
         windower.send_command('lua reload RegimeTracker')
     elseif command == 'unload' then
@@ -105,21 +110,14 @@ windower.register_event('addon command', function(command, ...)
     end
 end)
 
--- Monitor mob deaths
-windower.register_event('incoming chunk', function(id, original, modified, injected, blocked)
+-- Simple approach: Track current target for regime detection
+windower.register_event('prerender', function()
     if not settings.enabled then return end
     
-    -- Check for mob death (packet 0x29)
-    if id == 0x29 then
-        local mob_id = original:unpack('I', 0x04 + 1)
-        local mob_index = original:unpack('I', 0x08 + 1)
-        
-        -- Get the mob that was killed
-        local killed_mob = windower.ffxi.get_mob_by_id(mob_id)
-        if killed_mob and killed_mob.index == mob_index then
-            last_killed_mob = killed_mob
-            log('Last mob killed: ' .. killed_mob.name)
-        end
+    -- Get current target and update last_killed_mob if it's a monster
+    local current_target = windower.ffxi.get_mob_by_target('t')
+    if current_target and current_target.spawn_type == 16 then -- 16 = monster
+        last_killed_mob = current_target
     end
 end)
 
@@ -302,6 +300,7 @@ function show_help()
     log('//regime status - Show current regime status')
     log('//regime clear - Clear current regime')
     log('//regime toggle - Enable/disable tracking')
+    log('//regime debug - Show debug information')
     log('//regime reload - Reload the addon')
     log('//regime unload - Unload the addon')
     log('')
