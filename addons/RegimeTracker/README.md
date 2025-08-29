@@ -31,6 +31,7 @@ A Final Fantasy XI addon for Windower that tracks regime progress by monitoring 
 - `//regime set <family> <total>` - Set a new regime
 - `//regime clear` - Clear current regime
 - `//regime toggle` - Enable/disable tracking
+- `//regime sync` - Sync progress from recent chat messages
 - `//regime reload` - Reload the addon
 - `//regime unload` - Unload the addon
 
@@ -46,10 +47,17 @@ This will start tracking Goblin kills with a target of 4 total.
 
 ### Example Workflow
 
-1. **Set Regime**: `//regime set "Goblin" 4`
+1. **Set Regime**: `//regime set "Goblin" 4` (or auto-detect from grounds tome selection)
 2. **Kill Mobs**: The addon automatically tracks kills of the specified family
 3. **Monitor Progress**: Progress messages appear after each kill: "You defeated a designated target. (Progress: 2/4)"
-4. **Completion**: When the target is reached: "Regime complete! You have defeated 4 Goblin targets."
+4. **Chat Sync**: Automatically updates progress from game chat messages
+5. **Completion**: When the target is reached: "Regime complete! You have defeated 4 Goblin targets."
+
+### Auto-Detection Features
+
+- **Grounds Tome Selection**: Automatically detects when you select a new regime
+- **Chat Message Parsing**: Monitors chat for progress updates and completion messages
+- **Progress Synchronization**: Keeps regime progress in sync with game messages
 
 ## Configuration
 
@@ -63,9 +71,11 @@ The addon automatically saves settings to a config file. Key settings include:
 ## How It Works
 
 1. **Mob Death Detection**: Monitors incoming game packets to detect when mobs are killed
-2. **Family Lookup**: Queries the InfoBar database to get the family of the killed mob
-3. **Progress Tracking**: If the mob family matches the current regime, progress is incremented
-4. **Status Updates**: Progress messages are displayed and saved
+2. **Chat Message Monitoring**: Listens for regime progress messages in chat for automatic updates
+3. **Family Lookup**: Queries the InfoBar database to get the family of the killed mob
+4. **Progress Tracking**: If the mob family matches the current regime, progress is incremented
+5. **Status Updates**: Progress messages are displayed and saved
+6. **Auto-Detection**: Can automatically detect new regimes when selected from grounds tomes
 
 ## Database Integration
 
