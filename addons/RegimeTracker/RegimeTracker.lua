@@ -250,7 +250,9 @@ end)
 function get_mob_family(mob_name, zone_name)
     if not db or not db:isopen() then return nil end
     
-    -- First try exact match
+    log('Looking up mob: "' .. mob_name .. '" in zone: "' .. zone_name .. '"')
+    
+    -- First try exact match on both name and zone
     local query = string.format('SELECT family FROM "monster" WHERE name = "%s" AND zone = "%s"', mob_name, zone_name)
     log('Trying exact match query: ' .. query)
     
@@ -259,8 +261,8 @@ function get_mob_family(mob_name, zone_name)
         return family
     end
     
-    -- If no exact match, try case-insensitive match
-    query = string.format('SELECT family FROM "monster" WHERE LOWER(name) = LOWER("%s") AND zone = "%s"', mob_name, zone_name)
+    -- If no exact match, try case-insensitive match on both name and zone
+    query = string.format('SELECT family FROM "monster" WHERE LOWER(name) = LOWER("%s") AND LOWER(zone) = LOWER("%s")', mob_name, zone_name)
     log('Trying case-insensitive query: ' .. query)
     
     for family in db:urows(query) do
@@ -268,9 +270,9 @@ function get_mob_family(mob_name, zone_name)
         return family
     end
     
-    -- If still no match, try partial match (in case of extra spaces or slight differences)
+    -- If still no match, try partial match on name (in case of extra spaces or slight differences)
     query = string.format('SELECT family FROM "monster" WHERE name LIKE "%%%s%%" AND zone = "%s"', mob_name, zone_name)
-    log('Trying partial match query: ' .. query)
+    log('Trying partial name match query: ' .. query)
     
     for family in db:urows(query) do
         log('Found family (partial match): ' .. family)
@@ -282,8 +284,18 @@ function get_mob_family(mob_name, zone_name)
     log('Checking what mobs exist in this zone...')
     
     local zone_query = string.format('SELECT name, family FROM "monster" WHERE zone = "%s" LIMIT 5', zone_name)
+    log('Zone query: ' .. zone_query)
+    
     for name, family in db:urows(zone_query) do
-        log('Zone mob example: ' .. name .. ' -> ' .. family)
+        log('Zone mob example: ' .. name .. ' -> Family: ' .. family)
+    end
+    
+    -- Also check if the zone name exists at all
+    local zone_check_query = 'SELECT DISTINCT zone FROM "monster" WHERE zone LIKE "%' .. zone_name .. '%" LIMIT 5'
+    log('Zone check query: ' .. zone_check_query)
+    
+    for zone in db:urows(zone_check_query) do
+        log('Similar zone found: ' .. zone)
     end
     
     return nil
