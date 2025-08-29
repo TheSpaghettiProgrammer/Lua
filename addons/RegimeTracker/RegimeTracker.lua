@@ -101,6 +101,48 @@ windower.register_event('addon command', function(command, ...)
         log('Current target: ' .. (last_killed_mob and last_killed_mob.name or 'None'))
         log('Database connected: ' .. (db and db:isopen() and 'Yes' or 'No'))
         log('Zone: ' .. windower.ffxi.get_info().zone)
+        
+        -- Test database queries
+        if db and db:isopen() then
+            log('Testing database queries...')
+            local zone = windower.ffxi.get_info().zone
+            log('Current zone: ' .. zone)
+            
+            -- Show some mobs in current zone
+            local test_query = string.format('SELECT name, family FROM "monster" WHERE zone = "%s" LIMIT 3', zone)
+            log('Query: ' .. test_query)
+            
+            for name, family in db:urows(test_query) do
+                log('Mob: ' .. name .. ' -> Family: ' .. family)
+            end
+            
+            -- Test with current target if available
+            if last_killed_mob then
+                log('Testing family lookup for: ' .. last_killed_mob.name)
+                local family = get_mob_family(last_killed_mob.name, zone)
+                if family then
+                    log('Found family: ' .. family)
+                else
+                    log('No family found')
+                end
+            end
+        end
+    elseif command == 'lookup' and args[1] then
+        -- Manual lookup command: //regime lookup "Mob Name"
+        if db and db:isopen() then
+            local mob_name = table.concat(args, ' ')
+            local zone = windower.ffxi.get_info().zone
+            log('Manual lookup for: ' .. mob_name .. ' in zone: ' .. zone)
+            
+            local family = get_mob_family(mob_name, zone)
+            if family then
+                log('Found family: ' .. family)
+            else
+                log('No family found')
+            end
+        else
+            log('Database not connected')
+        end
     elseif command == 'reload' then
         windower.send_command('lua reload RegimeTracker')
     elseif command == 'unload' then
@@ -208,10 +250,40 @@ end)
 function get_mob_family(mob_name, zone_name)
     if not db or not db:isopen() then return nil end
     
+    -- First try exact match
     local query = string.format('SELECT family FROM "monster" WHERE name = "%s" AND zone = "%s"', mob_name, zone_name)
+    log('Trying exact match query: ' .. query)
     
     for family in db:urows(query) do
+        log('Found family (exact match): ' .. family)
         return family
+    end
+    
+    -- If no exact match, try case-insensitive match
+    query = string.format('SELECT family FROM "monster" WHERE LOWER(name) = LOWER("%s") AND zone = "%s"', mob_name, zone_name)
+    log('Trying case-insensitive query: ' .. query)
+    
+    for family in db:urows(query) do
+        log('Found family (case-insensitive): ' .. family)
+        return family
+    end
+    
+    -- If still no match, try partial match (in case of extra spaces or slight differences)
+    query = string.format('SELECT family FROM "monster" WHERE name LIKE "%%%s%%" AND zone = "%s"', mob_name, zone_name)
+    log('Trying partial match query: ' .. query)
+    
+    for family in db:urows(query) do
+        log('Found family (partial match): ' .. family)
+        return family
+    end
+    
+    -- If no match found, let's see what mobs are in this zone
+    log('No family found for mob: ' .. mob_name .. ' in zone: ' .. zone_name)
+    log('Checking what mobs exist in this zone...')
+    
+    local zone_query = string.format('SELECT name, family FROM "monster" WHERE zone = "%s" LIMIT 5', zone_name)
+    for name, family in db:urows(zone_query) do
+        log('Zone mob example: ' .. name .. ' -> ' .. family)
     end
     
     return nil
@@ -301,6 +373,7 @@ function show_help()
     log('//regime clear - Clear current regime')
     log('//regime toggle - Enable/disable tracking')
     log('//regime debug - Show debug information')
+    log('//regime lookup "Mob Name" - Test database lookup for a specific mob')
     log('//regime reload - Reload the addon')
     log('//regime unload - Unload the addon')
     log('')
